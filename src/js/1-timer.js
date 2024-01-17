@@ -1,3 +1,4 @@
+// 1-timer.js
 import flatpickr from 'flatpickr';
 import 'flatpickr/dist/flatpickr.min.css';
 import iziToast from 'izitoast';
@@ -12,7 +13,8 @@ const refs = {
   secondsEl: document.querySelector('.value[data-seconds]'),
 };
 
-let selectedDate = null;
+let userSelectedDate = null;
+let timerIntervalId = null;
 
 const options = {
   enableTime: true,
@@ -20,10 +22,10 @@ const options = {
   defaultDate: new Date(),
   minuteIncrement: 1,
   onClose(selectedDates) {
-    selectedDate = selectedDates[0];
+    userSelectedDate = selectedDates[0];
 
     const currentDate = new Date();
-    if (selectedDate.getTime() <= currentDate.getTime()) {
+    if (userSelectedDate.getTime() <= currentDate.getTime()) {
       iziToast.error({
         title: 'Error',
         message: 'Please choose a date in the future!',
@@ -31,11 +33,6 @@ const options = {
       });
       refs.startBtn.disabled = true;
     } else {
-      iziToast.success({
-        title: 'Success',
-        message: 'Valid date!',
-        position: 'center',
-      });
       refs.startBtn.disabled = false;
     }
   },
@@ -43,32 +40,31 @@ const options = {
 
 flatpickr(refs.datetimePicker, options);
 
-const timer = {
-  intervalId: null,
-  start() {
-    if (!selectedDate) {
+refs.startBtn.addEventListener('click', () => {
+  if (!userSelectedDate) {
+    return;
+  }
+
+  refs.startBtn.disabled = true;
+
+  timerIntervalId = setInterval(() => {
+    const currentTime = Date.now();
+    const deltaTime = userSelectedDate - currentTime;
+
+    if (deltaTime < 0) {
+      clearInterval(timerIntervalId);
+      iziToast.success({
+        title: 'Countdown Finished',
+        message: 'The countdown has reached the end!',
+        position: 'center',
+      });
+      refs.startBtn.disabled = false;
       return;
     }
 
-    this.intervalId = setInterval(() => {
-      const currentTime = Date.now();
-      const deltaTime = selectedDate - currentTime;
-
-      if (deltaTime < 0) {
-        clearInterval(this.intervalId);
-        return;
-      }
-
-      const timeComponents = convertMs(deltaTime);
-      updateTimer(timeComponents);
-    }, 1000);
-  },
-};
-
-refs.startBtn.addEventListener('click', () => {
-  if (selectedDate) {
-    timer.start();
-  }
+    const timeComponents = convertMs(deltaTime);
+    updateTimer(timeComponents);
+  }, 1000);
 });
 
 function convertMs(ms) {
@@ -86,10 +82,6 @@ function convertMs(ms) {
 
   return { days, hours, minutes, seconds };
 }
-
-console.log(convertMs(2000));
-console.log(convertMs(140000));
-console.log(convertMs(24140000));
 
 function addLeadingZero(value) {
   return String(value).padStart(2, '0');
